@@ -30,6 +30,8 @@ type DVolume  = Array D DIM3 Double
 type DMatrix  = Array D DIM2 Double
 type DVector  = Array D DIM1 Double
 
+type Volumes = Array U DIM4 Double
+
 -- | A network layer that has volumes as both its input and output.
 data Layer3
   = Conv -- ^ A layer that applies a convolution of its weights (or,
@@ -59,10 +61,10 @@ instance Show Layer3 where
 
 -- | Apply a volume to a Layer3
 forward :: Monad m
-        => Volume
+        => Volumes
         -> Layer3
-        -> m Volume
-forward x (Conv w b) = w `corr` x >>= computeP . (+^ b)
+        -> m Volumes
+forward x (Conv w b) = w `corr` x >>= computeP . (addConform b)
 
 forward x ReLU       = computeP $ R.map (max 0) x
 forward x Pool       = pool x
@@ -103,27 +105,30 @@ getMaximaThresholded vec cs t = find <$> vecs
     vecs = splitCs cs (toUnboxed vec)
     find vec = maybe Indeterminate toLabel . DV.findIndex (>t) $ vec
 
+addConform :: Volume -> Volumes -> Array D DIM4 Double
+addConform = undefined
+
 -- | Propagate an error gradient backwards through a Layer3. Some arguments
 --   are calculated during the forward pass. We could recalculate them
 --   during the backwards pass, but for the sake of both efficiency
 --   and clarity I chose to reuse them from the forward pass. The recursive
 --   definition of the training function makes this work out quite nicely.
-backward3 :: Monad m -- ^ Required by repa for parallel computations
-          => Layer3  -- ^ Layer to backprop through
-          -> Volume  -- ^ Input for this layer during the forward pass
-          -> Volume  -- ^ Output for this layer during the forward pass
-          -> Volume  -- ^ Error gradient on the output of this layer
-          -> m (Layer3, Volume) -- ^ Weight deltas, and error gradient on this layer's input.
-backward3 (Conv w _) x _ dy =
+backward :: Monad m -- ^ Required by repa for parallel computations
+         => Layer3  -- ^ Layer to backprop through
+         -> Volume  -- ^ Input for this layer during the forward pass
+         -> Volume  -- ^ Output for this layer during the forward pass
+         -> Volume  -- ^ Error gradient on the output of this layer
+         -> m (Layer3, Volume) -- ^ Weight deltas, and error gradient on this layer's input.
+backward (Conv w _) x _ dy =
   do dx <- w `fullConv` dy
      dw <- dy `corrVolumes` x
      return (Conv dw dy, dx)
 
-backward3 Pool x y dy =
+backward Pool x y dy =
   do dx <- poolBackprop x y dy
      return (Pool, dx)
 
-backward3 ReLU _ y dy =
+backward ReLU _ y dy =
   do dx <- computeP $ R.zipWith (\x t -> if t > 0 then x else 0) dy y
      return (ReLU, dx)
 
@@ -150,7 +155,7 @@ initVelocity x = x
 
 -- TODO: backprop van pooling moet extent-invariant worden
 -- | Max-pooling function for volumes
-pool :: Monad m => Volume -> m Volume
+pool :: Monad m => Volumes -> m Volumes
 pool v = computeP $ R.traverse v shFn maxReg
   where
     n = 2
@@ -203,8 +208,8 @@ rotateW arr = backpermute (Z:.d:.n:.h:.w) invert arr
 --   a output of size (Z:. n_k :. h_i - h_k +1 :. w_i - w_k + 1)
 corr :: Monad m -- ^ Host monad for repa
      => Weights -- ^ Convolution kernel
-     -> Volume  -- ^ Image to iterate over
-     -> m Volume
+     -> Volumes  -- ^ Image to iterate over
+     -> m Volumes
 corr krns img = if kd /= id
                    then error $ "kernel / image depth mismatch, k:" ++ show (extent krns) ++ " i:" ++ show (extent img)
                    else computeP $ fromFunction sh' convF

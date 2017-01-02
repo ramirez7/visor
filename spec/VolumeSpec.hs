@@ -214,13 +214,13 @@ prop_randomConvLayerShape
 -- backprop
 {-prop_backprop3ShapeInvariant (Layer3A (l, x)) = once$ runIdentity $-}
   {-do y <- forward x l-}
-     {-(_, dx) <- backward3 l x y y 0 0-}
+     {-(_, dx) <- backward l x y y 0 0-}
      {-return (extent x == extent dx)-}
 
 {-prop_backprop3ZeroGradientLayerInvariant (Layer3A (l, x)) = once$ runIdentity $-}
   {-do y <- forward x l-}
      {-d0 <- computeP $ map (const 0) y-}
-     {-(l', _) <- backward3 l x y d0 0 1-}
+     {-(l', _) <- backward l x y d0 0 1-}
      {-return (l == l')-}
 
 prop_softMaxBackwardShapeInvariant (VecA a) = runIdentity $

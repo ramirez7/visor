@@ -1,7 +1,7 @@
 module Games.Melee where
 
 import Game
-import ConvNet
+import ConvNet hiding (labels)
 import Util
 import Label
 import System.FilePath.Posix

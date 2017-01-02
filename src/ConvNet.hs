@@ -37,6 +37,11 @@ data ConvSample = ConvSample { sample :: Volume
                              } deriving (Eq, Show, Generic)
 instance Serialize ConvSample
 
+data ConvBatch = ConvBatch { samples :: Volumes
+                           , labels  :: [[Label]]
+                           } deriving (Eq, Show, Generic)
+instance Serialize ConvBatch
+
 -- | When a widget occurs more than one in an image, extracting them
 --   gives a sequence of samples rather than a single sample
 type ConvSampleSequence = [ConvSample]
@@ -87,7 +92,7 @@ initCNet specs iw ih ds = ConvNet convs ds
       | w-s+1 > 0 && h-s+1 > 0 = randomConvLayer s d n w h r : unroll3 ls (w-s+1) (h-s+1) n (sq r)
       | otherwise = error "Convolution kernel is too large"
 
-feed :: Monad m => ConvNet -> Volume -> m [Label]
+feed :: Monad m => ConvNet -> Volumes -> m [[Label]]
 feed (ConvNet l3s cs) v = do vol <- foldConv v
                              vec <- flatten vol
                              ys  <- softMax vec cs
@@ -160,5 +165,5 @@ getDeltas [] x cs ys = do
 getDeltas (l:ls) x cs ys =
   do f <- forward x l
      (df, dls, loss) <- getDeltas ls f cs ys
-     (dl, dx) <- backward3 l x f df
+     (dl, dx) <- backward l x f df
      return (dx, dl:dls, loss)
