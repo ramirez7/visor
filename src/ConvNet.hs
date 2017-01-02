@@ -93,7 +93,7 @@ feed (ConvNet l3s cs) v = do vol <- foldConv v
                              ys  <- softMax vec cs
                              return $ toLabel <$> getMaxima ys cs
   where
-    foldConv vol = foldM forward3 vol l3s
+    foldConv vol = foldM forward vol l3s
 
 feedThresholded :: Monad m => Double -> ConvNet -> Volume -> m [Label]
 feedThresholded t (ConvNet l3s cs) v = do vol <- foldConv v
@@ -101,7 +101,7 @@ feedThresholded t (ConvNet l3s cs) v = do vol <- foldConv v
                                           ys  <- softMax vec cs
                                           return $ getMaximaThresholded ys cs t
   where
-    foldConv vol = foldM forward3 vol l3s
+    foldConv vol = foldM forward vol l3s
 
 type Trainer = State TrainState
 type LossVector = [Double]
@@ -158,7 +158,7 @@ getDeltas [] x cs ys = do
   return (dx, [], losses)
 
 getDeltas (l:ls) x cs ys =
-  do f <- forward3 x l
+  do f <- forward x l
      (df, dls, loss) <- getDeltas ls f cs ys
      (dl, dx) <- backward3 l x f df
      return (dx, dl:dls, loss)

@@ -58,14 +58,14 @@ instance Show Layer3 where
       dimB = show . extent $ b
 
 -- | Apply a volume to a Layer3
-forward3 :: Monad m
-         => Volume
-         -> Layer3
-         -> m Volume
-forward3 x (Conv w b) = w `corr` x >>= computeP . (+^ b)
+forward :: Monad m
+        => Volume
+        -> Layer3
+        -> m Volume
+forward x (Conv w b) = w `corr` x >>= computeP . (+^ b)
 
-forward3 x ReLU       = computeP $ R.map (max 0) x
-forward3 x Pool       = pool x
+forward x ReLU       = computeP $ R.map (max 0) x
+forward x Pool       = pool x
 
 softMax :: Monad m => Vector -> [Int] -> m Vector
 softMax x cs = do maxElem <- foldAllP max (-1/0) x
