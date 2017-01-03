@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeOperators #-}
+
 module Volume.Types where
 
 import Data.Array.Repa
@@ -16,3 +18,7 @@ type Volumes = Array U DIM4 Double
 
 type ArrayU sh = Array U sh Double
 type ArrayD sh = Array D sh Double
+
+type VectorBase s = s:.Int
+type MatrixBase s = s:.Int:.Int
+type TensorBase s = s:.Int:.Int:.Int

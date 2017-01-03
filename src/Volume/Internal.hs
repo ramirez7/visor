@@ -1,5 +1,6 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Volume.Internal where
 
@@ -14,7 +15,10 @@ import Volume.Types
 
 {-# INLINE addConform #-}
 -- extend a to b and add them
-addConform :: Volume -> Volumes -> Array D DIM4 Double
+addConform :: Shape sh
+           => Volume
+           -> ArrayU (TensorBase sh)
+           -> ArrayD (TensorBase sh)
 addConform = undefined
 
 -- Z:._:.a:.b:.c -> Z:.a:.b:.c
@@ -35,9 +39,9 @@ pool v = computeP $ R.traverse v shFn maxReg
 --   propagating the error to the position of the max element in every subregion,
 --   setting the others to 0.
 poolBackprop :: (Monad m, Shape sh)
-             => ArrayU (sh:.Int:.Int) -- ^ Input during forward pass, used to determine max-element
-             -> ArrayU (sh:.Int:.Int) -- ^ Output during forward pass, used to determine max-element
-             -> ArrayU (sh:.Int:.Int) -- ^ Error gradient on the output
+             => ArrayU (MatrixBase sh) -- ^ Input during forward pass, used to determine max-element
+             -> ArrayU (MatrixBase sh) -- ^ Output during forward pass, used to determine max-element
+             -> ArrayU (MatrixBase sh) -- ^ Error gradient on the output
              -> m (ArrayU (sh:.Int:.Int)) -- ^ Error gradient on the input
 poolBackprop input output errorGradient = computeP $ traverse3 input output errorGradient shFn outFn
   where
@@ -59,24 +63,24 @@ poolBackprop input output errorGradient = computeP $ traverse3 input output erro
 --   A kernel of size (Z:. n_k :. d_k :. h_k :. w_k) convolved over
 --   an image of size (Z:. d_i :. h_i :. w_i) results in
 --   a output of size (Z:. n_k :. h_i - h_k +1 :. w_i - w_k + 1)
-corr :: Monad m -- ^ Host monad for repa
-     => Weights -- ^ Convolution kernel
-     -> Volumes  -- ^ Image to iterate over
-     -> m Volumes
+corr :: forall m sh. (Monad m, Shape sh)
+     => Weights                -- ^ Convolution kernel
+     -> ArrayU (TensorBase sh) -- ^ Image to iterate over
+     -> m (ArrayU (TensorBase sh))
 corr krns img = if kd /= id
-                   then error $ "kernel / image depth mismatch, k:" ++ show (extent krns) ++ " i:" ++ show (extent img)
+                   then error $ "kernel / image depth mismatch"
                    else computeP $ fromFunction sh' convF
   where
     Z:.kn:.kd:.kh:.kw = extent krns
-    Z:.si:.id:.ih:.iw = extent img
-    sh' = Z:.si:.kn:.ih-kh+1:.iw-kw+1
+    bi   :.id:.ih:.iw = extent img
+    sh' = bi:.kn:.ih-kh+1:.iw-kw+1
 
     {-# INLINE convF #-}
-    convF :: DIM4 -> Double
-    convF (Z:.oi:.od:.oh:.ow) = sumAllS $ krn *^ reshape (extent krn) img'
+    convF :: TensorBase sh -> Double
+    convF (ob:.od:.oh:.ow) = sumAllS $ krn *^ reshape (extent krn) img'
       where
         krn  = slice krns (Z:.od:.All:.All:.All)
-        img' = extract (Z:.oi:.0:.oh:.ow) (Z:.1:.id:.kh:.kw) img
+        img' = extract (ob:.0:.oh:.ow) (unitDim:.id:.kh:.kw) img
 
 corrVolumes :: (Monad m, Shape sh)
             => ArrayU (sh:.Int:.Int:.Int)
