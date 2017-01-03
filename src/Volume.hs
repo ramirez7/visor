@@ -100,12 +100,12 @@ getMaximaThresholded vec cs t = find <$> vecs
 --   during the backwards pass, but for the sake of both efficiency
 --   and clarity I chose to reuse them from the forward pass. The recursive
 --   definition of the training function makes this work out quite nicely.
-backward :: Monad m -- ^ Required by repa for parallel computations
+backward :: (Shape sh, Monad m)
          => Layer3  -- ^ Layer to backprop through
-         -> Volumes  -- ^ Input for this layer during the forward pass
-         -> Volumes  -- ^ Output for this layer during the forward pass
-         -> Volumes  -- ^ Error gradient on the output of this layer
-         -> m (Layer3, Volumes) -- ^ Weight deltas, and error gradient on this layer's input.
+         -> ArrayU (TensorBase sh)  -- ^ Input for this layer during the forward pass
+         -> ArrayU (TensorBase sh)  -- ^ Output for this layer during the forward pass
+         -> ArrayU (TensorBase sh)  -- ^ Error gradient on the output of this layer
+         -> m (Layer3, ArrayU (TensorBase sh)) -- ^ Weight deltas, and error gradient on this layer's input.
 backward (Conv w _) x _ dy =
   do dx <- w `fullConv` dy
      dw <- dy `corrVolumes` x
@@ -162,7 +162,7 @@ conv :: Monad m => Volume -> Volume -> m Weights
 conv krn img = do krn' <- computeP $ rotate krn
                   corrVolumes krn' img
 
-fullConv :: Monad m => Weights -> Volumes -> m Volumes
+fullConv :: (Shape sh, Monad m) => Weights -> ArrayU (TensorBase sh) -> m (ArrayU (TensorBase sh))
 fullConv krn img = do krn' <- computeP $ rotateW krn
                       img' <- computeP $ zeropad (kh-1) img
                       krn' `corr` img'

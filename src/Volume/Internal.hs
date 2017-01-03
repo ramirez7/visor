@@ -23,7 +23,7 @@ addConform = undefined
 
 -- Z:._:.a:.b:.c -> Z:.a:.b:.c
 {-# INLINE sumOuter #-}
-sumOuter :: Volumes -> Array D DIM3 Double
+sumOuter :: Shape sh => ArrayU (TensorBase sh) -> DVolume
 sumOuter = undefined
 
 -- TODO: backprop van pooling moet extent-invariant worden

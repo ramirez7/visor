@@ -5,6 +5,8 @@
 module ConvNet where
 
 import Volume
+import Volume.Types
+import Volume.Internal
 import Label
 import Util
 import Control.Monad

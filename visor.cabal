@@ -22,6 +22,8 @@ library
                      , Games.MeleeWatch
                      , Games.MeleeDiagram
                      , Volume
+                     , Volume.Internal
+                     , Volume.Types
                      , Label
                      , Images
                      , ConvNet
