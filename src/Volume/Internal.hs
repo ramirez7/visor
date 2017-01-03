@@ -44,3 +44,48 @@ poolBackprop input output errorGradient = computeP $ traverse3 input output erro
     outFn in_ out_ err_ p@(b:.y:.x) = if out_ p' == in_ p then err_ p' else 0
       where p' = b :. y `div` n :. x `div` n
 
+-- | Valid convolution of a stencil/kernel over some image, with the
+--   kernel rotated 180 degrees. The valid part means that no zero
+--   padding is applied. It is called corr to reflect that the
+--   correct term for this operation would be cross-correlation.
+--   Cross-correlation and convolution are used interchangeably in
+--   most literature which can make things very confusing.
+--   Note that the kernel is 4-dimensional, while the image is
+--   three-dimensional. The stencils first dimension translates
+--   to the output volume's depth.
+--   A kernel of size (Z:. n_k :. d_k :. h_k :. w_k) convolved over
+--   an image of size (Z:. d_i :. h_i :. w_i) results in
+--   a output of size (Z:. n_k :. h_i - h_k +1 :. w_i - w_k + 1)
+corr :: Monad m -- ^ Host monad for repa
+     => Weights -- ^ Convolution kernel
+     -> Volumes  -- ^ Image to iterate over
+     -> m Volumes
+corr krns img = if kd /= id
+                   then error $ "kernel / image depth mismatch, k:" ++ show (extent krns) ++ " i:" ++ show (extent img)
+                   else computeP $ fromFunction sh' convF
+  where
+    Z:.kn:.kd:.kh:.kw = extent krns
+    Z:.si:.id:.ih:.iw = extent img
+    sh' = Z:.si:.kn:.ih-kh+1:.iw-kw+1
+
+    {-# INLINE convF #-}
+    convF :: DIM4 -> Double
+    convF (Z:.oi:.od:.oh:.ow) = sumAllS $ krn *^ reshape (extent krn) img'
+      where
+        krn  = slice krns (Z:.od:.All:.All:.All)
+        img' = extract (Z:.oi:.0:.oh:.ow) (Z:.1:.id:.kh:.kw) img
+
+corrVolumes :: Monad m => Volumes -> Volumes -> m Weights
+corrVolumes krns imgs = computeP $ fromFunction sh' convF
+  where
+    Z:.ki:.kd:.kh:.kw = extent krns
+    Z:.ii:.id:.ih:.iw = extent imgs
+    sh' :: DIM4
+    sh' = Z :. kd :. id :. ih-kh+1 :. iw-kw+1
+
+    {-# INLINE convF #-}
+    convF :: DIM4 -> Double
+    convF (Z:.n:.z:.y:.x) = sumAllS $ krn *^ img
+      where
+        krn = extract (ix3 n 0 0) (ix3 1 kh kw) krns
+        img = extract (ix3 z y x) (ix3 1 kh kw) imgs
