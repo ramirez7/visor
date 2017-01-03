@@ -61,8 +61,9 @@ forward x (Conv w b) = w `corr` x >>= computeP . (addConform b)
 forward x ReLU       = computeP $ R.map (max 0) x
 forward x Pool       = pool x
 
-softMax :: (Shape sh, Monad m) => ArrayU (VectorBase sh) -> [Int] -> m (ArrayU (VectorBase sh))
-softMax x cs = do let b:.i = extent x
+{-# INLINE softMax #-}
+softMax :: (Source r Double, Shape sh, Monad m) => Array r (VectorBase sh) Double -> [Int] -> m (ArrayU (VectorBase sh))
+softMax x cs = do let b:._ = extent x
                       offsets = scanl (+) 0 cs
                       ranges = zip offsets cs
                       extractRange (ix,w) = extract (b:.ix) (unitDim:.w) x
@@ -239,9 +240,11 @@ subtractOneAt i arr = computeP $ R.traverse arr id ixFn
 
 -- TODO: Non-urgent; Let forward1 accept delayed representations so the
 -- flattened array does not need to be rebuilt in memory
-flatten :: (Monad m, Source r1 Double, Shape sh1) => Array r1 sh1 Double -> m Vector
-flatten arr = computeP $ reshape (Z:.s) arr
-  where s = product . listOfShape . extent $ arr
+flatten :: (Source r1 Double, Shape sh)
+        => Array r1 (TensorBase sh) Double
+        -> ArrayD (VectorBase sh)
+flatten arr = reshape (flat$extent arr) arr
+  where flat (b:.d:.h:.w) = b:.d*h*w
 
 randomConvLayer :: Int -- ^ Kernel size
                 -> Int -- ^ Kernel/input depth

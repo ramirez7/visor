@@ -94,17 +94,7 @@ feed :: (Monad m, Shape sh)
      -> ArrayU (TensorBase sh)
      -> m (ArrayU (VectorBase sh))
 feed (ConvNet l3s cs) v = do vol <- foldConv v
-                             vec <- flatten vol
-                             ys  <- softMax vec cs
-                             return $ toLabel <$> getMaxima ys cs
-  where
-    foldConv vol = foldM forward vol l3s
-
-feedThresholded :: Monad m => Double -> ConvNet -> Volume -> m [Label]
-feedThresholded t (ConvNet l3s cs) v = do vol <- foldConv v
-                                          vec <- flatten vol
-                                          ys  <- softMax vec cs
-                                          return $ getMaximaThresholded ys cs t
+                             softMax (flatten vol) cs
   where
     foldConv vol = foldM forward vol l3s
 
