@@ -19,18 +19,8 @@ import qualified Data.Vector.Unboxed as DV
 import Data.Array.Repa.Algorithms.Randomish
 import GHC.Generics (Generic)
 import Data.Serialize
-
-type Weights = Array U DIM4 Double
-type Volume  = Array U DIM3 Double
-type Matrix  = Array U DIM2 Double
-type Vector  = Array U DIM1 Double
-type Bias    = Volume
-type DWeights = Array D DIM4 Double
-type DVolume  = Array D DIM3 Double
-type DMatrix  = Array D DIM2 Double
-type DVector  = Array D DIM1 Double
-
-type Volumes = Array U DIM4 Double
+import Volume.Internal
+import Volume.Types
 
 -- | A network layer that has volumes as both its input and output.
 data Layer3
@@ -105,9 +95,6 @@ getMaximaThresholded vec cs t = find <$> vecs
     vecs = splitCs cs (toUnboxed vec)
     find vec = maybe Indeterminate toLabel . DV.findIndex (>t) $ vec
 
-addConform :: Volume -> Volumes -> Array D DIM4 Double
-addConform = undefined
-
 -- | Propagate an error gradient backwards through a Layer3. Some arguments
 --   are calculated during the forward pass. We could recalculate them
 --   during the backwards pass, but for the sake of both efficiency
@@ -115,14 +102,15 @@ addConform = undefined
 --   definition of the training function makes this work out quite nicely.
 backward :: Monad m -- ^ Required by repa for parallel computations
          => Layer3  -- ^ Layer to backprop through
-         -> Volume  -- ^ Input for this layer during the forward pass
-         -> Volume  -- ^ Output for this layer during the forward pass
-         -> Volume  -- ^ Error gradient on the output of this layer
-         -> m (Layer3, Volume) -- ^ Weight deltas, and error gradient on this layer's input.
+         -> Volumes  -- ^ Input for this layer during the forward pass
+         -> Volumes  -- ^ Output for this layer during the forward pass
+         -> Volumes  -- ^ Error gradient on the output of this layer
+         -> m (Layer3, Volumes) -- ^ Weight deltas, and error gradient on this layer's input.
 backward (Conv w _) x _ dy =
   do dx <- w `fullConv` dy
      dw <- dy `corrVolumes` x
-     return (Conv dw dy, dx)
+     db <- computeP$ sumOuter dy
+     return (Conv dw db, dx)
 
 backward Pool x y dy =
   do dx <- poolBackprop x y dy
@@ -152,31 +140,6 @@ applyDelta _ l v _ _ _ = return (l,v)
 initVelocity :: Layer3 -> Layer3
 initVelocity (Conv w b) = Conv (computeS$ R.map (const 0) w) (computeS$ R.map (const 0) b)
 initVelocity x = x
-
--- TODO: backprop van pooling moet extent-invariant worden
--- | Max-pooling function for volumes
-pool :: Monad m => Volumes -> m Volumes
-pool v = computeP $ R.traverse v shFn maxReg
-  where
-    n = 2
-    shFn (Z:.d:.h:.w) = Z:. d :. h `div` n :. w `div` n
-    maxReg lkUp (b:.y:.x) = maximum [ lkUp (b:.y*n + dy:.x*n + dx) | dy <- [0..n-1], dx <- [0 .. n-1]]
-
--- | Backprop of the max-pooling function. We upsample the error volume,
---   propagating the error to the position of the max element in every subregion,
---   setting the others to 0.
-poolBackprop :: Monad m
-             => Volume -- ^ Input during forward pass, used to determine max-element
-             -> Volume -- ^ Output during forward pass, used to determine max-element
-             -> Volume -- ^ Error gradient on the output
-             -> m Volume -- ^ Error gradient on the input
-poolBackprop input output errorGradient = computeP $ traverse3 input output errorGradient shFn outFn
-  where
-    n = 2
-    shFn sh _ _ = sh
-    {-# INLINE outFn #-}
-    outFn in_ out_ err_ p@(Z:.z:.y:.x) = if out_ p' == in_ p then err_ p' else 0
-      where p' = Z:. z :. y `div` n :. x `div` n
 
 -- | Rotates the two topmost dimensions of an array by 180 degrees.
 {-# INLINE rotate #-}
@@ -215,17 +178,17 @@ corr krns img = if kd /= id
                    else computeP $ fromFunction sh' convF
   where
     Z:.kn:.kd:.kh:.kw = extent krns
-    Z:.    id:.ih:.iw = extent img
-    sh' = Z:.kn:.ih-kh+1:.iw-kw+1
+    Z:.si:.id:.ih:.iw = extent img
+    sh' = Z:.si:.kn:.ih-kh+1:.iw-kw+1
 
     {-# INLINE convF #-}
-    convF :: DIM3 -> Double
-    convF (Z:.od:.oh:.ow) = sumAllS $ krn *^ img'
+    convF :: DIM4 -> Double
+    convF (Z:.oi:.od:.oh:.ow) = sumAllS $ krn *^ reshape (extent krn) img'
       where
         krn  = slice krns (Z:.od:.All:.All:.All)
-        img' = extract (Z:.0:.oh:.ow) (Z:.id:.kh:.kw) img
+        img' = extract (Z:.oi:.0:.oh:.ow) (Z:.1:.id:.kh:.kw) img
 
-corrVolumes :: Monad m => Volume -> Volume -> m Weights
+corrVolumes :: Monad m => Volumes -> Volumes -> m Weights
 corrVolumes krns imgs = computeP $ fromFunction sh' convF
   where
     Z:.kd:.kh:.kw = extent krns
@@ -244,7 +207,7 @@ conv :: Monad m => Volume -> Volume -> m Weights
 conv krn img = do krn' <- computeP $ rotate krn
                   corrVolumes krn' img
 
-fullConv :: Monad m => Weights -> Volume -> m Volume
+fullConv :: Monad m => Weights -> Volumes -> m Volumes
 fullConv krn img = do krn' <- computeP $ rotateW krn
                       img' <- computeP $ zeropad (kh-1) img
                       krn' `corr` img'
