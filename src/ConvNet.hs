@@ -4,6 +4,8 @@
 
 module ConvNet where
 
+import Prelude hiding ((++))
+import Data.Monoid
 import Volume
 import Volume.Types
 import Volume.Internal
@@ -11,7 +13,7 @@ import Label
 import Util
 import Control.Monad
 import GHC.Generics (Generic)
-import qualified Data.Array.Repa as R
+import Data.Array.Repa as R
 import Data.Serialize (Serialize)
 import Control.Monad.Trans.State.Strict
 
@@ -23,7 +25,7 @@ import Control.Monad.Trans.State.Strict
 --   kernels.
 data ConvNet = ConvNet [Layer3] [Int]
 
-  deriving Generic
+  deriving (Generic, Show)
 instance Serialize ConvNet
 -- TODO: A good future optimization is
 -- `data Shape sh => ConvNet sh = ConvNet [Layer(3)] sh`
@@ -48,13 +50,6 @@ instance Serialize ConvBatch
 --   gives a sequence of samples rather than a single sample
 type ConvSampleSequence = [ConvSample]
 type VisorSample = [ConvSampleSequence]
-
-instance Show ConvNet where
-  show (ConvNet l3s l1s) = unlines $ ["ConvNet"] ++ l3str ++ [" -"] ++ l1str
-    where
-      indent str = "  " ++ str
-      l3str = fmap (indent . show) l3s
-      l1str = fmap (indent . show) l1s
 
 -- | Defines the parameters for the construction of a convolutional layer
 data LayerSpec
@@ -94,7 +89,10 @@ initCNet specs iw ih ds = ConvNet convs ds
       | w-s+1 > 0 && h-s+1 > 0 = randomConvLayer s d n w h r : unroll3 ls (w-s+1) (h-s+1) n (sq r)
       | otherwise = error "Convolution kernel is too large"
 
-feed :: Monad m => ConvNet -> Volumes -> m [[Label]]
+feed :: (Monad m, Shape sh)
+     => ConvNet
+     -> ArrayU (TensorBase sh)
+     -> m (ArrayU (VectorBase sh))
 feed (ConvNet l3s cs) v = do vol <- foldConv v
                              vec <- flatten vol
                              ys  <- softMax vec cs

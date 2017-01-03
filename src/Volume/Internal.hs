@@ -1,16 +1,14 @@
+{-# OPTIONS_GHC -Odph -rtsopts -threaded -fno-liberate-case
+                -funfolding-use-threshold1000 -funfolding-keeness-factor1000
+                -fllvm -optlo-O3 #-}
+
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Volume.Internal where
 
-import Label
-import Data.Word
-import Data.Array.Repa as R hiding ((++))
-import qualified Data.Vector.Unboxed as DV
-import Data.Array.Repa.Algorithms.Randomish
-import GHC.Generics (Generic)
-import Data.Serialize
+import Data.Array.Repa as R
 import Volume.Types
 
 {-# INLINE addConform #-}

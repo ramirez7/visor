@@ -21,6 +21,8 @@ import GHC.Generics (Generic)
 import Data.Serialize
 import Volume.Internal
 import Volume.Types
+import Control.Monad
+
 
 -- | A network layer that has volumes as both its input and output.
 data Layer3
@@ -59,12 +61,20 @@ forward x (Conv w b) = w `corr` x >>= computeP . (addConform b)
 forward x ReLU       = computeP $ R.map (max 0) x
 forward x Pool       = pool x
 
-softMax :: Monad m => Vector -> [Int] -> m Vector
-softMax x cs = do maxElem <- foldAllP max (-1/0) x
-                  (exps   :: Vector) <- computeP $ R.map (exp . subtract maxElem) x
-                  let splits = splitCs cs $ toUnboxed exps
-                      crossEntropy = DV.concat $ fmap normalize splits
-                  return $ fromUnboxed (extent x) crossEntropy
+softMax :: (Shape sh, Monad m) => ArrayU (VectorBase sh) -> [Int] -> m (ArrayU (VectorBase sh))
+softMax x cs = do let b:.i = extent x
+                      offsets = scanl (+) 0 cs
+                      ranges = zip offsets cs
+                      extractRange (ix,w) = extract (b:.ix) (unitDim:.w) x
+                      cols = extractRange <$> ranges
+                      expNorm   ps   maxs = computeP $ traverse2 ps   maxs const (\f1 f2 ix@(b:._) -> exp$ f1 ix - f2 b)
+                      subtract' exps sums = traverse2 exps sums const (\f1 f2 ix@(b:._) -> f1 ix / f2 b)
+
+                  maxElems <- Prelude.traverse (foldP max (-1/0)) cols
+                  exps :: [ArrayU (sh:.Int)]  <- zipWithM expNorm cols maxElems
+                  expSums :: [ArrayU sh]      <- Prelude.traverse sumP exps
+                  let probs :: [ArrayD (sh:.Int)] = Prelude.zipWith subtract' exps expSums
+                  computeP$ foldl1 append probs
 
 splitCs :: [Int] -> DV.Vector Double -> [DV.Vector Double]
 splitCs [] _ = []
