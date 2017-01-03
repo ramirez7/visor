@@ -285,28 +285,7 @@ getWeights [] = []
 getWeights (Conv w _:ws) = w : getWeights ws
 getWeights (_:ws) = getWeights ws
 
-instance (DV.Unbox e, Serialize e) => Serialize (Array U DIM4 e) where
-  put a = do put (listOfShape . extent $ a)
-             put (toList a)
-  get   = do sh    <- shapeOfList <$> get
-             elems <- get
-             return (fromListUnboxed sh elems)
-
-instance (DV.Unbox e, Serialize e) => Serialize (Array U DIM3 e) where
-  put a = do put (listOfShape . extent $ a)
-             put (toList a)
-  get   = do sh    <- shapeOfList <$> get
-             elems <- get
-             return (fromListUnboxed sh elems)
-
-instance (DV.Unbox e, Serialize e) => Serialize (Array U DIM2 e) where
-  put a = do put (listOfShape . extent $ a)
-             put (toList a)
-  get   = do sh    <- shapeOfList <$> get
-             elems <- get
-             return (fromListUnboxed sh elems)
-
-instance (DV.Unbox e, Serialize e) => Serialize (Array U DIM1 e) where
+instance (DV.Unbox e, Serialize e, Shape sh) => Serialize (Array U sh e) where
   put a = do put (listOfShape . extent $ a)
              put (toList a)
   get   = do sh    <- shapeOfList <$> get
