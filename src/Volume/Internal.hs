@@ -1,3 +1,6 @@
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TypeOperators #-}
+
 module Volume.Internal where
 
 import Label
@@ -8,6 +11,9 @@ import Data.Array.Repa.Algorithms.Randomish
 import GHC.Generics (Generic)
 import Data.Serialize
 import Volume.Types
+
+type ArrayU sh = Array U sh Double
+type ArrayD sh = Array D sh Double
 
 {-# INLINE addConform #-}
 -- extend a to b and add them
@@ -75,11 +81,14 @@ corr krns img = if kd /= id
         krn  = slice krns (Z:.od:.All:.All:.All)
         img' = extract (Z:.oi:.0:.oh:.ow) (Z:.1:.id:.kh:.kw) img
 
-corrVolumes :: Monad m => Volumes -> Volumes -> m Weights
+corrVolumes :: (Monad m, Shape sh)
+            => ArrayU (sh:.Int:.Int:.Int)
+            -> ArrayU (sh:.Int:.Int:.Int)
+            -> m Weights
 corrVolumes krns imgs = computeP $ fromFunction sh' convF
   where
-    Z:.ki:.kd:.kh:.kw = extent krns
-    Z:.ii:.id:.ih:.iw = extent imgs
+    kb:.kd:.kh:.kw = extent krns
+    ib:.id:.ih:.iw = extent imgs
     sh' :: DIM4
     sh' = Z :. kd :. id :. ih-kh+1 :. iw-kw+1
 
@@ -87,5 +96,5 @@ corrVolumes krns imgs = computeP $ fromFunction sh' convF
     convF :: DIM4 -> Double
     convF (Z:.n:.z:.y:.x) = sumAllS $ krn *^ img
       where
-        krn = extract (ix3 n 0 0) (ix3 1 kh kw) krns
-        img = extract (ix3 z y x) (ix3 1 kh kw) imgs
+        krn = extract (zeroDim :. n :. 0 :. 0) (kb :. 1 :. kh :. kw) krns
+        img = extract (zeroDim :. z :. y :. x) (kb :. 1 :. kh :. kw) imgs
