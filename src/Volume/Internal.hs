@@ -32,15 +32,15 @@ pool v = computeP $ R.traverse v shFn maxReg
 --   propagating the error to the position of the max element in every subregion,
 --   setting the others to 0.
 poolBackprop :: Monad m
-             => Volume -- ^ Input during forward pass, used to determine max-element
-             -> Volume -- ^ Output during forward pass, used to determine max-element
-             -> Volume -- ^ Error gradient on the output
-             -> m Volume -- ^ Error gradient on the input
+             => Volumes -- ^ Input during forward pass, used to determine max-element
+             -> Volumes -- ^ Output during forward pass, used to determine max-element
+             -> Volumes -- ^ Error gradient on the output
+             -> m Volumes -- ^ Error gradient on the input
 poolBackprop input output errorGradient = computeP $ traverse3 input output errorGradient shFn outFn
   where
     n = 2
     shFn sh _ _ = sh
     {-# INLINE outFn #-}
-    outFn in_ out_ err_ p@(Z:.z:.y:.x) = if out_ p' == in_ p then err_ p' else 0
-      where p' = Z:. z :. y `div` n :. x `div` n
+    outFn in_ out_ err_ p@(b:.y:.x) = if out_ p' == in_ p then err_ p' else 0
+      where p' = b :. y `div` n :. x `div` n
 
