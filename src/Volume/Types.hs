@@ -14,3 +14,5 @@ type DVector  = Array D DIM1 Double
 
 type Volumes = Array U DIM4 Double
 
+type ArrayU sh = Array U sh Double
+type ArrayD sh = Array D sh Double

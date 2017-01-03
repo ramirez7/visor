@@ -12,9 +12,6 @@ import GHC.Generics (Generic)
 import Data.Serialize
 import Volume.Types
 
-type ArrayU sh = Array U sh Double
-type ArrayD sh = Array D sh Double
-
 {-# INLINE addConform #-}
 -- extend a to b and add them
 addConform :: Volume -> Volumes -> Array D DIM4 Double

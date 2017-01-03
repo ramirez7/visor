@@ -50,10 +50,10 @@ instance Show Layer3 where
       dimB = show . extent $ b
 
 -- | Apply a volume to a Layer3
-forward :: Monad m
-        => Volumes
+forward :: (Monad m, Shape sh)
+        => ArrayU (sh:.Int:.Int:.Int)
         -> Layer3
-        -> m Volumes
+        -> m (ArrayU (sh:.Int:.Int:.Int))
 forward x (Conv w b) = w `corr` x >>= computeP . (addConform b)
 
 forward x ReLU       = computeP $ R.map (max 0) x
