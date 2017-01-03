@@ -10,6 +10,8 @@ import Data.Array.Repa
 import Data.Functor.Identity
 import Data.Serialize
 import Volume
+import Volume.Types
+import Volume.Internal
 import Util
 import Label
 

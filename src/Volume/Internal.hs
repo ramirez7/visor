@@ -27,21 +27,21 @@ sumOuter = undefined
 
 -- TODO: backprop van pooling moet extent-invariant worden
 -- | Max-pooling function for volumes
-pool :: Monad m => Volumes -> m Volumes
+pool :: (Shape sh, Monad m) => ArrayU (sh:.Int:.Int) -> m (ArrayU (sh:.Int:.Int))
 pool v = computeP $ R.traverse v shFn maxReg
   where
     n = 2
-    shFn (Z:.n:.d:.h:.w) = Z:. n:.d :. h `div` n :. w `div` n
+    shFn (b:.h:.w) = b :. h `div` n :. w `div` n
     maxReg lkUp (b:.y:.x) = maximum [ lkUp (b:.y*n + dy:.x*n + dx) | dy <- [0..n-1], dx <- [0 .. n-1]]
 
 -- | Backprop of the max-pooling function. We upsample the error volume,
 --   propagating the error to the position of the max element in every subregion,
 --   setting the others to 0.
-poolBackprop :: Monad m
-             => Volumes -- ^ Input during forward pass, used to determine max-element
-             -> Volumes -- ^ Output during forward pass, used to determine max-element
-             -> Volumes -- ^ Error gradient on the output
-             -> m Volumes -- ^ Error gradient on the input
+poolBackprop :: (Monad m, Shape sh)
+             => ArrayU (sh:.Int:.Int) -- ^ Input during forward pass, used to determine max-element
+             -> ArrayU (sh:.Int:.Int) -- ^ Output during forward pass, used to determine max-element
+             -> ArrayU (sh:.Int:.Int) -- ^ Error gradient on the output
+             -> m (ArrayU (sh:.Int:.Int)) -- ^ Error gradient on the input
 poolBackprop input output errorGradient = computeP $ traverse3 input output errorGradient shFn outFn
   where
     n = 2
