@@ -97,7 +97,7 @@ feed (ConvNet l3s cs) v = do vol <- foldConv v
     foldConv vol = foldM forward vol l3s
 
 feedThresholded :: Monad m => Double -> ConvNet -> Volume -> m [Label]
-feedThresholded = undefined
+feedThresholded = error "feedThresholded not yet reimplemented"
 
 type Trainer = State TrainState
 type LossVector = [Double]

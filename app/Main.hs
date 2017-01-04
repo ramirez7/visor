@@ -36,20 +36,17 @@ main' ["meleeRaw"] =
 
 main' ["meleeTrain", n] =
   do let vFile = "data"</>"visor"</>"melee.visor"
-
-     --visor  <- loadVisor vFile melee
-     let visor = gameVisor melee
-     visor' <- runConduitRes (( if n == "all" then batchSource else loopC batchSource .| takeC (read n)) .| (trainVisorC visor))
-     {-visor' <- runResourceT $ buffer 1-}
-                                   {-( if n == "all" then batchSource-}
-                                                   {-else loopC batchSource .| takeC (read n))-}
-                                   {-(trainVisorC visor)-}
+     visor  <- loadVisor vFile melee
+     visor' <- runResourceT $ buffer 1
+                                   ( if n == "all" then batchSource
+                                                   else loopC batchSource .| takeC (read n))
+                                   (trainVisorC visor)
      saveWeightImages visor'
      saveVisor vFile visor'
 
 main' ["meleeWatch", read -> x, read -> y, read -> w, read -> h] =
   do let vFile = "data"</>"visor"</>"melee.visor"
-     visor <- loadVisor vFile undefined
+     visor <- loadVisor vFile (error "No visor found")
      runConduitRes $ screenSourceRepa x y w h
                   .| mapMC (cropScale melee)
                   .| mapMC (\img -> feedVisorFast visor img 0.99)
@@ -57,7 +54,7 @@ main' ["meleeWatch", read -> x, read -> y, read -> w, read -> h] =
 
 main' ["watchTest", read -> x, read -> y, read -> w, read -> h] =
   do let vFile = "data"</>"visor"</>"melee.visor"
-     visor <- loadVisor vFile undefined
+     visor <- loadVisor vFile (error "No visor found")
      runConduitRes $ screenSource x y w h
                   .| watchC visor melee 0.5
                   .| parseSink

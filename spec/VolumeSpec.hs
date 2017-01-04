@@ -228,16 +228,18 @@ prop_forwardZeroBias seed (VolA x) (Positive (Small n)) =
 
 
 -- backprop
-{-prop_backprop3ShapeInvariant (Layer3A (l, x)) = once$ runIdentity $-}
-  {-do y <- forward x l-}
-     {-(_, dx) <- backward l x y y 0 0-}
-     {-return (extent x == extent dx)-}
+prop_backprop3ShapeInvariant (Layer3A (l, x)) = once$ runIdentity $
+  do y <- forward x l
+     (_, dx) <- backward l x y y
+     return (extent x == extent dx)
 
-{-prop_backprop3ZeroGradientLayerInvariant (Layer3A (l, x)) = once$ runIdentity $-}
-  {-do y <- forward x l-}
-     {-d0 <- computeP $ map (const 0) y-}
-     {-(l', _) <- backward l x y d0 0 1-}
-     {-return (l == l')-}
+prop_backprop3ZeroGradientLayerInvariant (Layer3A (l, x)) = once$ runIdentity $
+  do y <- forward x l
+     d0 <- computeP $ map (const 0) y
+     (dl, _) <- backward l x y d0
+     let v = initVelocity l
+     (l', _) <- applyDelta dl l v 1 0 0
+     return (l == l')
 
 prop_softMaxBackwardShapeInvariant (VecA a) = runIdentity $
   do y <- softMax a [size . extent $ a]

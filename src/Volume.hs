@@ -132,13 +132,13 @@ backward ReLU _ y dy =
      return (ReLU, dx)
 
 applyDelta :: Monad m
-           => Layer3
-           -> Layer3
-           -> Layer3
-           -> Double
-           -> Double
-           -> Double
-           -> m (Layer3, Layer3)
+           => Layer3 -- ^ Delta layer
+           -> Layer3 -- ^ Input layer
+           -> Layer3 -- ^ Velocity layer
+           -> Double -- ^ Learning rate
+           -> Double -- ^ Regularization loss
+           -> Double -- ^ Momentum factor
+           -> m (Layer3, Layer3) -- ^ Updated layer, updated velocity layer
 applyDelta (Conv dw db) (Conv w b) (Conv vw vb) α λ γ =
   do vw' <- computeP$ R.zipWith (\v d -> γ*v - α*d) vw dw
      vb' <- computeP$ R.zipWith (\v d -> γ*v - α*d) vb db
