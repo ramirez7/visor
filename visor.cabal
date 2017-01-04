@@ -67,6 +67,7 @@ executable visor-app
                       -fno-warn-missing-signatures
                       -O2
                       -threaded
+                      -with-rtsopts=-N
   main-is:             main.hs
   build-depends:       base
                      , visor
@@ -90,6 +91,7 @@ test-suite visor-spec
                       -fno-warn-missing-signatures
                       -O2
                       -threaded
+                      -with-rtsopts=-N
   hs-source-dirs:      spec
   build-depends:       base
                      , visor

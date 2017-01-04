@@ -7,6 +7,7 @@ import ConvNet
 import Game
 import Images
 import Volume
+import Volume.Types
 import Control.Monad
 import Data.Serialize (Serialize, decode, encode)
 import GHC.Generics (Generic)

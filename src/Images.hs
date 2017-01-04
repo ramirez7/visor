@@ -5,6 +5,7 @@ module Images where
 
 import Game
 import Volume
+import Volume.Types
 import ConvNet
 import Data.Array.Repa hiding ((++))
 import Codec.Picture

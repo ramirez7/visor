@@ -134,7 +134,6 @@ prop_corrExtent (WgtA a) (VolA b) = once$
     Z:.kn:.kd:.kh:.kw = extent a
     out = runIdentity $ a `corr` b
 
--- Note that we could drop the d==1 constraint if the output of corr were four-dimensional
 prop_corrIdentity (VolA a) = once$ d == 1 ==> ca == a
   where
     Z:.d:._:._ = extent a
@@ -211,6 +210,21 @@ prop_randomConvLayerShape
     Conv w b = randomConvLayer s d n i i seed
     Z:.wn:.wd:.wh:.ww = extent w
     Z:.bd:.bh:.bw = extent b
+
+prop_addConformVolume (VolA a)  = runIdentity$ do
+  p1 :: Volume <- computeP$ a +^ a
+  p2 :: Volume <- computeP$ addConform a a
+  return$ p1 == p2
+
+-- forward
+prop_forwardZeroBias seed (VolA x) (Positive (Small n)) =
+  xh > 3 && xw > 3 ==> runIdentity$
+    do x' <- computeP$ map (const 0) x
+       out <- forward x' layer
+       return (out `approxA` b)
+  where
+    Z:.xd:.xh:.xw = extent x
+    layer@(Conv _ b) = randomConvLayer 3 xd n xw xh seed
 
 
 -- backprop

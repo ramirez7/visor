@@ -17,7 +17,7 @@ addConform :: Shape sh
            => Volume
            -> ArrayU (TensorBase sh)
            -> ArrayD (TensorBase sh)
-addConform = undefined
+addConform vol arr = traverse2 arr vol const (\ f1 f2 ix@(_:.z:.y:.x) -> f1 ix + f2 (ix3 z y x))
 
 -- Z:._:.a:.b:.c -> Z:.a:.b:.c
 {-# INLINE sumOuter #-}
@@ -87,7 +87,7 @@ corrVolumes :: (Monad m, Shape sh)
 corrVolumes krns imgs = computeP $ fromFunction sh' convF
   where
     kb:.kd:.kh:.kw = extent krns
-    ib:.id:.ih:.iw = extent imgs
+    _ :.id:.ih:.iw = extent imgs
     sh' :: DIM4
     sh' = Z :. kd :. id :. ih-kh+1 :. iw-kw+1
 

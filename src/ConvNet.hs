@@ -5,10 +5,8 @@
 module ConvNet where
 
 import Prelude hiding ((++))
-import Data.Monoid
 import Volume
 import Volume.Types
-import Volume.Internal
 import Label
 import Util
 import Control.Monad
@@ -42,7 +40,7 @@ data ConvSample = ConvSample { sample :: Volume
 instance Serialize ConvSample
 
 data ConvBatch = ConvBatch { samples :: Volumes
-                           , labels  :: [[Label]]
+                           , labels  :: Matrix
                            } deriving (Eq, Show, Generic)
 instance Serialize ConvBatch
 
@@ -98,6 +96,9 @@ feed (ConvNet l3s cs) v = do vol <- foldConv v
   where
     foldConv vol = foldM forward vol l3s
 
+feedThresholded :: Monad m => Double -> ConvNet -> Volume -> m [Label]
+feedThresholded = undefined
+
 type Trainer = State TrainState
 type LossVector = [Double]
 
@@ -144,8 +145,7 @@ getDeltas :: Monad m
        -> m (Volume, [Layer3], [Double])
 
 getDeltas [] x cs ys = do
-  f <- flatten x
-  p <- softMax f cs
+  p <- softMax (flatten x) cs
   (df,losses) <- softMaxBackward p cs ys
   dx <- if any (>4) losses
            then R.computeP $ R.fromFunction (R.extent x) (const 0)
