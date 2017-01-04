@@ -31,7 +31,7 @@ trainVisor s = do nets  <- get
                   return losses
 
 initVisorTrainState :: Visor -> [TrainState]
-initVisorTrainState (Visor nets) = initTrainState 1e-3 1e-5 0.9 <$> nets
+initVisorTrainState (Visor nets) = initTrainState 1e-4 1e-5 0.9 <$> nets
 
 toVisor states = Visor $ network <$> states
 

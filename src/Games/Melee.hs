@@ -18,7 +18,7 @@ dmgStocks = Widget { resolution = 32
                    , position = [(w 36, h 762), (w 336, h 762)]
                    , dimensions = (w 300, h 260)
                    , cardinalities = [10, 10, 10, 5]
-                   , netSpec = [ConvS 13 64, ReLUS, PoolS, ConvS 5 64, ReLUS, PoolS]
+                   , netSpec = [ConvS 9 16, ReLUS, PoolS, ConvS 5 16, ReLUS, PoolS]
                    }
 
 -- Time is not yet included. It adds little important information, and is pretty inefficient

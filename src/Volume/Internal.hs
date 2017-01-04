@@ -22,7 +22,8 @@ addConform vol arr = traverse2 arr vol const (\ f1 f2 ix@(_:.z:.y:.x) -> f1 ix +
 -- Z:._:.a:.b:.c -> Z:.a:.b:.c
 {-# INLINE sumOuter #-}
 sumOuter :: Shape sh => ArrayU (TensorBase sh) -> DVolume
-sumOuter = error "sumOuter not yet implemented"
+sumOuter arr = fromFunction (Z:.d:.h:.w) (\ (Z:.z:.y:.x) -> sumAllS $ slice arr (Any:.z:.y:.x))
+  where _:.d:.h:.w = extent arr
 
 -- TODO: backprop van pooling moet extent-invariant worden
 -- | Max-pooling function for volumes
